@@ -1,0 +1,406 @@
+<title>あめと くさ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yomogi&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: one white "drawing paper" stage on a pale desk, controls + timeline under it, prompt cards below. Single light world by choice (the drawing is on white paper). */
+:root{
+  --desk:#eef1f4; --paper:#ffffff; --ink:#1b1b1b; --muted:#5d6673;
+  --ame:#2f6fe0; --kusa:#3aa845; --tsuchi:#8a5a2b; --kiiro:#f5c400; --pink:#f27ab0; --hoppe:#e5484d;
+  --line:#d5dbe2;
+  --f-hand:"Yomogi","Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+  --f-ui:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:light;
+}
+html,body{background:var(--desk);color:var(--ink)}
+body{font-family:var(--f-ui);font-size:15px;line-height:1.7;padding-block:24px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header h1{font-family:var(--f-hand);font-weight:400;font-size:clamp(26px,5vw,36px);margin:0;line-height:1.2;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:65ch}
+.stage{background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 0 var(--line),0 10px 30px -18px rgba(30,40,60,.35);overflow:hidden}
+.stage svg{display:block;width:100%;height:auto;aspect-ratio:4/3;max-width:100%}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+button{font-family:var(--f-ui);font-size:14px;font-weight:700;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:999px;padding:6px 16px;cursor:pointer}
+button:hover{background:#fff8d6}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ame);outline-offset:2px}
+.time{font-family:var(--f-mono);font-variant-numeric:tabular-nums;min-width:5.5ch}
+#scrub{flex:1 1 240px;min-width:0;accent-color:var(--ame)}
+.tl{display:grid;grid-template-columns:2.5fr 3fr 3fr 1.5fr;gap:4px}
+.tl button{border-radius:6px;border-width:0;border-top:5px solid var(--c);text-align:left;padding:8px 10px;font-weight:500;font-size:13px;line-height:1.45;background:var(--paper);min-width:0}
+.tl button b{display:block;font-family:var(--f-mono);font-size:12px;color:var(--muted);font-weight:400}
+.tl button.on{background:#fff8d6}
+@media (max-width:620px){.tl{grid-template-columns:1fr 1fr}}
+h2{font-family:var(--f-hand);font-weight:400;font-size:26px;margin:16px 0 0}
+.note{color:var(--muted);margin:0;max-width:70ch}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card .hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card h3{margin:0;font-size:16px}
+.card .sub{font-size:12px;color:var(--muted);letter-spacing:.04em}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--f-mono);font-size:12.5px;line-height:1.6;background:#f6f8fa;border-radius:4px;padding:12px;overflow-x:auto}
+textarea.fallback{width:100%;min-height:120px;font-family:var(--f-mono);font-size:12px}
+body.record{padding:0;background:#fff}
+body.record .wrap{max-width:none;gap:0}
+body.record .wrap>*:not(.stage){display:none}
+body.record .stage{border:0;border-radius:0;box-shadow:none}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>テーマ あめと くさ</h1>
+    <p>こどもの絵をもとにした10秒ループのアニメーション。線がチラチラ揺れるラインボイル付き。下のバーで各シーンに飛べます。</p>
+  </header>
+
+  <div class="stage">
+    <svg id="scene" viewBox="0 0 800 600" role="img" aria-label="雨の中、青い四角いキャラ「あめめち」2体と、頭に草が生えた茶色いキャラ「くさちさみは」が跳ねるアニメーション">
+      <defs>
+        <filter id="boil" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="1" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+      <rect width="800" height="600" fill="#ffffff"/>
+      <rect id="flash" width="800" height="600" fill="#fff3a6" opacity="0"/>
+      <g id="world" filter="url(#boil)"></g>
+    </svg>
+  </div>
+
+  <div class="controls">
+    <button id="play" type="button">一時停止</button>
+    <span class="time" id="time">0.00s</span>
+    <input id="scrub" type="range" min="0" max="10" step="0.01" value="0" aria-label="再生位置">
+  </div>
+  <div class="tl" id="tl">
+    <button type="button" data-t="0" style="--c:var(--kiiro)"><b>0.0–2.5s</b>雨と稲妻</button>
+    <button type="button" data-t="2.5" style="--c:var(--ame)"><b>2.5–5.5s</b>あめめち ぴょんぴょん</button>
+    <button type="button" data-t="5.5" style="--c:var(--kusa)"><b>5.5–8.5s</b>くさちさみは 開花ジャンプ</button>
+    <button type="button" data-t="8.5" style="--c:var(--pink)"><b>8.5–10s</b>みんなでジャンプ</button>
+  </div>
+
+  <h2>動画・画像生成AI用プロンプト</h2>
+  <p class="note">元のイラストを100%維持するには、動画AIは「画像→動画（Image-to-Video）」で原画をそのまま1フレーム目に指定するのが確実です。AIは日本語の文字を崩しやすいので、吹き出しの文字は後から原画の文字を合成する運用をおすすめします。</p>
+
+  <div class="card">
+    <div class="hd"><div><h3>A. 動画生成AI用</h3><div class="sub">Runway Gen-3 / Kling / Sora / Luma ・ Image-to-Video推奨</div></div><button type="button" data-copy="pA">コピー</button></div>
+    <pre id="pA">Image-to-video. Use the uploaded child's drawing as the exact first and last frame. Keep everything unchanged: same layout, same characters, same text, same wobbly black hand-drawn lines of uneven thickness, flat pure white background (#FFFFFF). Simple 2D frame-by-frame animation at about 12 fps with subtle line boil (outlines jitter slightly every few frames). Static camera, no zoom, no pan.
+
+0–2.5s: 21 small blue teardrop raindrops and one tiny green leaf fall gently from three black-outlined clouds. A yellow zigzag lightning bolt flashes down from the left cloud.
+2.5–5.5s: the two blue-outlined square characters on the left (a blue raindrop on each head, smiling ^ ^ eyes, red cheeks, tiny black arms and legs, motion lines) hop up and down one after the other. Their speech bubbles pop in.
+5.5–8.5s: the brown-outlined square character in the center, with a thick straight green sprout and a leaf growing from its head, crouches and makes a big jump with yellow radiating lines under its feet. At the tip of the sprout, short blue rays burst out and a fluffy pink-and-yellow flower and a fluffy blue-and-green flower pop open. Its two speech bubbles pop in.
+8.5–10s: rain keeps falling while all three characters bounce together happily, then land back in their first-frame pose for a seamless loop.
+
+Style: naive children's crayon and marker drawing, flat colors, no shading, playful and cute.
+
+Negative: 3D, realistic, anime, moe style, changed proportions, tall characters, clean vector lines, gradients, shadows, lighting effects, depth of field, camera movement, extra characters, new objects, changed or garbled text.</pre>
+  </div>
+
+  <div class="card">
+    <div class="hd"><div><h3>B. 画像生成AI用</h3><div class="sub">Midjourney / DALL-E 3 / Stable Diffusion</div></div><button type="button" data-copy="pB">コピー</button></div>
+    <pre id="pB">A child's hand-drawn picture on plain white paper, flat white background (#FFFFFF), drawn with crayons and markers, wobbly black lines of uneven thickness, naive and cute, flat colors, no shading.
+
+Top left: handwritten black title text stacked vertically, "テーマ", "あめと", "くさ", surrounded by small round green and blue dots. Three simple black-outlined clouds in the sky (left-middle, upper right-middle, right); a yellow zigzag lightning bolt falls from the left cloud. 21 blue teardrop raindrops and one small green leaf scattered across the sky. One wobbly black horizontal line across the bottom as the ground.
+
+Left: two identical small square characters stacked one above the other, outlined in blue, a blue raindrop on each head, smiling ^ ^ eyes, red cheeks, tiny black stick arms and legs, motion lines showing a jump. Cloud-shaped speech bubble at upper right: "1 わたしは、あめめち". Speech bubble at lower left: "ああ わたしの あだなね".
+
+Center: a square character outlined in brown, smiling ^ ^ eyes, red cheeks, a thick straight green sprout growing from its head with a green leaf to the lower right; short blue rays burst from the sprout tip, with a fluffy pink-and-yellow flower and a fluffy blue-and-green flower blooming above. Yellow radiating jump lines under its body, jumping high. Speech bubble upper right: "やあぼく くさちさみは". Speech bubble lower left: "2 こんにちはあ".
+
+Midjourney: add  --ar 4:3 --style raw --stylize 50
+Stable Diffusion negative prompt: 3d, realistic, photo, anime, moe, detailed shading, gradient, clean vector art, tall proportions, extra limbs, extra characters, blurry, watermark</pre>
+  </div>
+</div>
+
+<script>
+(() => {
+const NS = "http://www.w3.org/2000/svg";
+const C = {ink:"#1b1b1b", ame:"#2f6fe0", ameFill:"#cfe0ff", kusa:"#3aa845", tsuchi:"#8a5a2b", kiiro:"#f5c400", pink:"#f27ab0", hoppe:"#e5484d", sky:"#6aa8ff"};
+const FONT = '"Yomogi","Zen Maru Gothic",sans-serif';
+
+// deterministic randomness so the drawing is the same on every load
+let s = 20251123;
+const rnd = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const j = (a) => (rnd() - 0.5) * 2 * a;
+
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const g = (parent, attrs) => el("g", attrs, parent);
+
+// wobbly polyline through points, with jittered midpoints
+function wob(pts, closed, amp = 1.6) {
+  let d = `M${pts[0][0] + j(amp)},${pts[0][1] + j(amp)}`;
+  const list = closed ? [...pts.slice(1), pts[0]] : pts.slice(1);
+  let prev = pts[0];
+  for (const p of list) {
+    const mx = (prev[0] + p[0]) / 2 + j(amp * 1.6), my = (prev[1] + p[1]) / 2 + j(amp * 1.6);
+    d += ` Q${mx},${my} ${p[0] + j(amp)},${p[1] + j(amp)}`;
+    prev = p;
+  }
+  return d + (closed ? " Z" : "");
+}
+const rectPts = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+const line = (parent, pts, stroke, w = 3.2, extra = {}) => el("path", {d: wob(pts, false), fill: "none", stroke, "stroke-width": w, "stroke-linecap": "round", "stroke-linejoin": "round", ...extra}, parent);
+
+function drop(parent, x, y, sc = 1, fill = C.ameFill, stroke = C.ame) {
+  return el("path", {d: "M0,-11 C4,-4 7.5,0 7.5,4.5 A7.5,7.5 0 0 1 -7.5,4.5 C-7.5,0 -4,-4 0,-11Z", transform: `translate(${x},${y}) scale(${sc})`, fill, stroke, "stroke-width": 2.4, "stroke-linejoin": "round"}, parent);
+}
+function leafShape(parent, x, y, rot, sc = 1) {
+  const gg = g(parent, {transform: `translate(${x},${y}) rotate(${rot}) scale(${sc})`});
+  el("path", {d: "M0,0 C10,-12 30,-12 40,0 C30,12 10,12 0,0Z", fill: "#bde8b6", stroke: C.kusa, "stroke-width": 3, "stroke-linejoin": "round"}, gg);
+  el("path", {d: "M3,0 L34,0", stroke: C.kusa, "stroke-width": 2, "stroke-linecap": "round"}, gg);
+  return gg;
+}
+function smile(parent, cx, cy, w = 7) {
+  line(parent, [[cx - w, cy + 3], [cx, cy - 4], [cx + w, cy + 3]], C.ink, 2.6);
+}
+function text(parent, x, y, lines, size = 20, color = C.ink, anchor = "middle") {
+  const t = el("text", {x, y, "font-family": FONT, "font-size": size, fill: color, "text-anchor": anchor}, parent);
+  lines.forEach((ln, i) => { const sp = el("tspan", {x, dy: i ? size * 1.25 : 0}, t); sp.textContent = ln; });
+  return t;
+}
+// bumpy outline (cloud / cloud bubble): stroked circles, then same circles filled white on top to erase inner lines
+function bumpy(parent, cx, cy, rx, ry, n, r, stroke = C.ink) {
+  const pts = [];
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; pts.push([cx + Math.cos(a) * rx + j(2), cy + Math.sin(a) * ry + j(2), r + j(r * 0.25)]); }
+  pts.forEach(p => el("circle", {cx: p[0], cy: p[1], r: p[2], fill: "#fff", stroke, "stroke-width": 3}, parent));
+  pts.forEach(p => el("circle", {cx: p[0], cy: p[1], r: p[2] - 1.6, fill: "#fff"}, parent));
+  el("ellipse", {cx, cy, rx: rx, ry: ry, fill: "#fff"}, parent);
+}
+function bubble(parent, cx, cy, rx, ry, tail, lines, size = 20) {
+  const b = g(parent);
+  const [tx, ty] = tail;
+  const ang = Math.atan2(ty - cy, tx - cx), perp = ang + Math.PI / 2, bx = cx + Math.cos(ang) * rx * 0.8, by = cy + Math.sin(ang) * ry * 0.8;
+  el("path", {d: wob([[bx + Math.cos(perp) * 12, by + Math.sin(perp) * 12], [tx, ty], [bx - Math.cos(perp) * 12, by - Math.sin(perp) * 12]], false, 1), fill: "#fff", stroke: C.ink, "stroke-width": 3, "stroke-linejoin": "round"}, b);
+  const pts = []; for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); }
+  el("path", {d: wob(pts, true, 1.4), fill: "#fff", stroke: C.ink, "stroke-width": 3}, b);
+  text(b, cx, cy + size * 0.35 - (lines.length - 1) * size * 0.62, lines, size);
+  return b;
+}
+
+const world = document.getElementById("world");
+const L = {rain: g(world), sky: g(world), chars: g(world), fx: g(world), bubbles: g(world)};
+
+// ---------- background (positions traced from the original, 1536x1152 -> 800x600) ----------
+const GROUND = 398;
+el("path", {d: wob([[16, 411], [52, 402], [200, 396], [400, 391], [600, 393], [700, 398], [784, 406]], false, 1), fill: "none", stroke: C.ink, "stroke-width": 2.4, "stroke-linecap": "round"}, L.sky);
+text(L.sky, 18, 76, ["テーマ"], 46, C.ink, "start");
+text(L.sky, 26, 158, ["あめと"], 44, C.ink, "start");
+text(L.sky, 44, 228, ["くさ"], 46, C.ink, "start");
+[[16, 104, C.kusa], [107, 91, C.ame], [159, 94, C.kusa], [26, 240, C.ame], [47, 266, C.kusa], [120, 229, C.ame]]
+  .forEach(([x, y, c]) => el("ellipse", {cx: x, cy: y, rx: 6 + j(1), ry: 8 + j(1), fill: c}, L.sky));
+function blob(parent, pts, w = 2.4) { return el("path", {d: wob(pts, true, 2), fill: "#fff", stroke: C.ink, "stroke-width": w, "stroke-linejoin": "round"}, parent); }
+blob(L.sky, [[190, 30], [205, 6], [240, 2], [258, 22], [254, 50], [232, 62], [200, 64], [184, 48]]);
+line(L.sky, [[222, 24], [232, 14]], C.ink, 2);
+blob(L.sky, [[530, 50], [548, 14], [580, 2], [612, 6], [624, 34], [612, 58], [570, 74], [522, 82]]);
+blob(L.sky, [[676, 112], [684, 88], [712, 74], [748, 78], [758, 104], [740, 124], [704, 140], [668, 126]]);
+// lightning: thin yellow zigzag strands from the small cloud down past the top amemechi
+const bolt = g(L.sky, {opacity: 0});
+line(bolt, [[228, 64], [222, 92], [232, 96], [220, 128], [234, 132], [218, 166]], C.kiiro, 2.6);
+line(bolt, [[212, 64], [208, 96], [214, 104], [204, 136], [212, 142], [206, 160]], C.kiiro, 2.2);
+line(bolt, [[236, 104], [246, 120], [240, 146], [250, 158]], C.kiiro, 2.2);
+
+// ---------- rain: 21 scribbly drops + 1 leaf; each period divides 10s so the loop is seamless ----------
+function scribDrop(parent) {
+  const d = g(parent);
+  el("path", {d: "M0,-12 C3,-5 6,0 6,5 A6,6 0 0 1 -6,5 C-6,0 -3,-5 0,-12Z", fill: "none", stroke: C.ame, "stroke-width": 2, "stroke-linejoin": "round"}, d);
+  line(d, [[-2, -4], [2, 2], [-3, 6], [3, 8]], C.ame, 1.6);
+  return d;
+}
+const periods = [2, 2.5, 10 / 3, 5];
+const xs = [253, 328, 384, 395, 553, 582, 578, 565, 686, 717, 724, 686, 571, 540, 458, 325, 709, 655, 620, 760, 470];
+const drops = xs.map((x, i) => ({x: x + j(6), p: periods[i % 4], ph: rnd(), sc: 0.9 + rnd() * 0.3, node: scribDrop(L.rain)}));
+const fallLeaf = leafShape(L.rain, 0, 0, 0, 0.45);
+
+// ---------- characters ----------
+function amemechi(cx, cy, tilt) {
+  const root = g(L.chars), body = g(root), t = g(body, {transform: `rotate(${tilt},${cx},${cy})`});
+  const w = 62, h = 60, x = cx - w / 2, y = cy - h / 2;
+  line(t, [[x - 4, y + 34], [x - 12, y + 40]], C.ink, 2);                 // arm
+  line(t, [[x + w + 2, y + 26], [x + w + 12, y + 20], [x + w + 8, y + 32]], C.ink, 2);
+  line(t, [[cx - 10, y + h + 2], [cx - 14, y + h + 10]], C.ink, 2);    // legs
+  line(t, [[cx + 10, y + h + 2], [cx + 13, y + h + 10]], C.ink, 2);
+  el("path", {d: wob(rectPts(x, y, w, h), true, 1.4), fill: "#fff", stroke: C.ame, "stroke-width": 7, "stroke-linejoin": "round"}, t);
+  el("path", {d: "M0,-24 C6,-10 12,-2 12,8 A12,12 0 0 1 -12,8 C-12,-2 -6,-10 0,-24Z", transform: `translate(${x + 10},${y - 10}) rotate(-8)`, fill: C.ame, stroke: C.ame, "stroke-width": 3}, t);
+  smile(t, cx - 4, y + 22, 5); smile(t, cx + 16, y + 22, 5);
+  el("circle", {cx: cx + 4, cy: y + 30, r: 1.3, fill: C.ink}, t);
+  line(t, [[cx - 12, y + 36], [cx - 6, y + 38]], C.hoppe, 2); line(t, [[cx + 22, y + 34], [cx + 27, y + 36]], C.hoppe, 2);
+  return {root, body, cx, base: cy + h / 2 + 10};
+}
+// motion lines next to the top amemechi (static, as drawn)
+line(L.chars, [[156, 172], [172, 156], [196, 162]], C.ink, 2);
+line(L.chars, [[168, 196], [182, 182], [198, 186]], C.ink, 2);
+line(L.chars, [[184, 210], [194, 200], [202, 202]], C.ink, 2);
+const ameTop = amemechi(258, 182, -14);
+const ameBot = amemechi(270, 270, -15);
+drop(L.chars, 248, 226, 1.3, C.ame, C.ame);   // the drop between the two
+
+const kBase = 281, kcx = 386;
+const kRoot = g(L.chars), kBody = g(kRoot);
+const kTipY = 152;
+{
+  const w = 84, h = 70, x = kcx - w / 2, y = kBase - 10 - h;
+  el("path", {d: wob([[kcx - 18, y + h], [kcx - 20, y + h + 12], [kcx - 4, y + h + 10], [kcx + 6, y + h + 13], [kcx + 14, y + h]], false, 1), fill: "none", stroke: C.tsuchi, "stroke-width": 5, "stroke-linejoin": "round"}, kBody); // feet
+  el("path", {d: wob([[x, y + 30], [x - 12, y + 40], [x - 10, y + 56], [x + 2, y + 52]], false, 1), fill: "none", stroke: C.tsuchi, "stroke-width": 5, "stroke-linecap": "round"}, kBody);   // left arm
+  el("path", {d: "M0,0 C10,-8 28,-10 38,-4 C30,4 12,8 0,0Z", transform: `translate(${x + w},${y + 52})`, fill: C.kusa, stroke: C.kusa, "stroke-width": 3}, kBody); // right arm = green leaf
+  el("path", {d: wob(rectPts(x, y, w, h), true, 1.4), fill: "#fff", stroke: C.tsuchi, "stroke-width": 6, "stroke-linejoin": "round"}, kBody);
+  smile(kBody, kcx - 18, y + 24, 9); smile(kBody, kcx + 14, y + 24, 9);
+  el("circle", {cx: kcx - 2, cy: y + 34, r: 1.4, fill: C.ink}, kBody);
+  line(kBody, [[kcx - 30, y + 44], [kcx - 22, y + 46]], C.hoppe, 2); line(kBody, [[kcx + 22, y + 44], [kcx + 30, y + 46]], C.hoppe, 2);
+  // thick sprout with a knobby tip
+  el("path", {d: wob([[kcx - 8, y + 2], [kcx - 6, y - 40], [kcx - 14, y - 50], [kcx - 6, y - 60], [kcx + 6, y - 56], [kcx + 14, y - 62], [kcx + 16, y - 50], [kcx + 8, y - 40], [kcx + 10, y + 2]], true, 1), fill: C.kusa, stroke: C.kusa, "stroke-width": 3, "stroke-linejoin": "round"}, kBody);
+  drop(kBody, kcx + 22, y - 22, 0.6, C.ame, C.ame);
+}
+// yellow rays under the flowers + flowers
+const rays = g(kBody, {opacity: 0});
+[[360, 140, 352, 150], [372, 142, 368, 152], [404, 144, 412, 152], [426, 142, 438, 148], [452, 140, 462, 146], [470, 134, 480, 138]]
+  .forEach(([a, b, c, d]) => line(rays, [[a, b], [c, d]], C.kiiro, 2));
+function fluffy(parent, cx, cy, r, petal, center, centerShape) {
+  const f = g(parent), inner = g(f);
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; el("circle", {cx: Math.cos(a) * r * 0.55 + j(2), cy: Math.sin(a) * r * 0.55 + j(2), r: r * 0.5, fill: petal, opacity: .85}, inner); }
+  if (centerShape === "rect") el("rect", {x: -14, y: -8, width: 28, height: 16, rx: 6, fill: center}, inner);
+  else el("ellipse", {cx: 4, cy: 8, rx: r * 0.5, ry: r * 0.25, fill: center, transform: "rotate(-12)"}, inner);
+  return {f, cx, cy};
+}
+const flowerA = fluffy(kBody, 388, 112, 26, "#f3c4f0", "#f39a0f", "rect");
+const flowerB = fluffy(kBody, 448, 106, 32, "#1e7be8", "#2c7a3a", "ellipse");
+// yellow jump lines below (stay near the ground)
+const burst = g(L.fx);
+[[324, 310, 322, 352], [338, 304, 344, 340], [366, 306, 364, 346], [388, 306, 386, 342], [404, 304, 410, 344], [424, 310, 448, 350]]
+  .forEach(([a, b, c, d]) => el("path", {d: `M${a},${b} Q${(a + c) / 2 + 6},${(b + d) / 2} ${c},${d}`, fill: "none", stroke: C.kiiro, "stroke-width": 2.4, "stroke-linecap": "round"}, burst));
+[[330, 372, 330, 386], [346, 376, 344, 388], [368, 370, 366, 388], [384, 372, 384, 390], [402, 374, 408, 396], [430, 376, 460, 392]]
+  .forEach(([a, b, c, d]) => line(burst, [[a, b], [c, d]], C.kiiro, 2.2));
+line(burst, [[394, 352], [402, 349]], C.ink, 1.6); line(burst, [[394, 358], [402, 355]], C.ink, 1.6);
+const fxOrigin = [386, 396];
+
+// ---------- speech bubbles ----------
+function blobBubble(cx, cy, rx, ry, rot, lines, size, tailPts, num) {
+  const b = g(L.bubbles), r = g(b, {transform: `rotate(${rot},${cx},${cy})`});
+  const pts = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; pts.push([cx + Math.cos(a) * rx * (1 + j(.06)), cy + Math.sin(a) * ry * (1 + j(.08))]); }
+  el("path", {d: wob(pts, true, 1.6), fill: "#fff", stroke: C.ink, "stroke-width": 2.4}, r);
+  if (tailPts) line(r, tailPts, C.ink, 2.4);
+  text(r, cx, cy + size * 0.35 - (lines.length - 1) * size * 0.62, lines, size);
+  if (num) text(b, num[0], num[1], [num[2]], 18);
+  return b;
+}
+const bubWatashi = blobBubble(320, 124, 48, 30, -10, ["わたしは、", "あめめち"], 18, [[282, 140], [282, 156], [300, 152]], [344, 84, "1"]);
+const bubAdana = blobBubble(186, 316, 70, 50, -28, ["ああ", "わたしの", "あだなね"], 18, [[216, 268], [208, 258], [228, 264]], [172, 256, "2"]);
+const bubKusa = blobBubble(506, 194, 72, 28, 6, ["やあぼく", "くさちさみは"], 17, [[444, 200], [442, 216], [460, 214]]);
+const bubHello = blobBubble(306, 318, 62, 20, -55, ["こんにちはあ"], 17, null, [344, 306, "2"]);
+const bubbles = [
+  {n: bubWatashi, ox: 282, oy: 156, t: 2.8},
+  {n: bubAdana, ox: 222, oy: 262, t: 3.7},
+  {n: bubKusa, ox: 442, oy: 216, t: 6.9},
+  {n: bubHello, ox: 340, oy: 280, t: 7.6},
+];
+
+// ---------- timeline ----------
+const clamp = (v) => Math.max(0, Math.min(1, v));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const outBack = (x) => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2; };
+const inOut = (x) => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
+// hop: returns [height, squash]
+function hop(t, a, b, n, h) {
+  if (t < a || t >= b) return [0, 0];
+  const f = ((t - a) / (b - a) * n) % 1, y = h * Math.sin(Math.PI * f);
+  const sq = f < .12 ? 1 - f / .12 : f > .88 ? (f - .88) / .12 : 0;
+  return [y, sq];
+}
+const fade = (t) => 1 - seg(t, 9.55, 9.92);           // things that reset for the loop
+function popScale(t, start) { const p = seg(t, start, start + 0.35); return p === 0 ? 0 : outBack(p) * fade(t); }
+function setTr(node, ox, oy, sx, sy, dy = 0) {
+  node.setAttribute("transform", `translate(${ox},${oy + dy}) scale(${sx},${sy}) translate(${-ox},${-oy})`);
+}
+
+function render(t) {
+  // rain
+  drops.forEach(d => {
+    const f = (t / d.p + d.ph) % 1, y = -20 + f * (GROUND - 4);
+    d.node.setAttribute("transform", `translate(${d.x},${y}) scale(${d.sc})`);
+    d.node.setAttribute("opacity", f > .94 ? (1 - f) / .06 : 1);
+  });
+  { const f = (t / 5 + .3) % 1; fallLeaf.setAttribute("transform", `translate(${560 - f * 90 + Math.sin(f * Math.PI * 4) * 22},${-10 + f * (GROUND - 10)}) rotate(${Math.sin(f * Math.PI * 4) * 40}) scale(.45)`); }
+
+  // lightning: flickers at ~0.5s, stays, resets at the end
+  let bo = 0;
+  if (t >= .5 && t < .6) bo = 1; else if (t >= .6 && t < .7) bo = 0; else if (t >= .7) bo = fade(t);
+  bolt.setAttribute("opacity", bo);
+  const fl = (t >= .5 && t < .6) || (t >= .7 && t < .85) ? .55 : 0;
+  document.getElementById("flash").setAttribute("opacity", fl);
+
+  // amemechi: hop in turns 2.5–5.5, then together 8.5–10
+  const ameHop = (who, delay, h) => {
+    let [y, sq] = hop(t, 2.5 + delay, 5.5 + delay - 0.0001 - (delay ? 0.75 : 0), delay ? 3 : 4, h);
+    const [y2, sq2] = hop(t, 8.5, 10, 3, h * 0.8);
+    y += y2; sq = Math.max(sq, sq2);
+    setTr(who.body, who.cx, who.base, 1 + sq * .1, 1 - sq * .12, -y);
+  };
+  ameHop(ameTop, 0, 26);
+  ameHop(ameBot, .25, 16);
+
+  // kusachisamiha
+  let ky = 0, sx = 1, sy = 1;
+  if (t >= 5.5 && t < 6.0) { const p = inOut(seg(t, 5.5, 6.0)); sy = 1 - .2 * p; sx = 1 + .12 * p; }
+  else if (t >= 6.0 && t < 7.1) { const p = seg(t, 6.0, 7.1); ky = 56 * Math.sin(Math.PI * p); sy = 1 + .1 * Math.max(0, 1 - p * 4); sx = 2 - sy; }
+  else if (t >= 7.1 && t < 7.35) { const p = Math.sin(Math.PI * seg(t, 7.1, 7.35)); sy = 1 - .15 * p; sx = 1 + .1 * p; }
+  else if (t >= 7.4 && t < 8.4) { const [y, sq] = hop(t, 7.4, 8.4, 2, 16); ky = y; sy = 1 - sq * .1; sx = 1 + sq * .08; }
+  else if (t >= 8.5) { const [y, sq] = hop(t, 8.5, 10, 3, 30); ky = y; sy = 1 - sq * .12; sx = 1 + sq * .1; }
+  setTr(kBody, kcx, kBase, sx, sy, -ky);
+
+  // yellow burst: always drawn, flares on take-off and on finale landings
+  const flare = Math.max(Math.sin(Math.PI * seg(t, 5.9, 6.45)), t >= 8.5 ? hop(t, 8.5, 10, 3, 1)[1] * .6 : 0);
+  setTr(burst, fxOrigin[0], fxOrigin[1], 1 + flare * .35, 1 + flare * .35);
+  burst.setAttribute("opacity", .75 + flare * .25);
+
+  // flowers + rays
+  const fa = popScale(t, 6.4), fb = popScale(t, 6.58);
+  flowerA.f.setAttribute("transform", `translate(${flowerA.cx},${flowerA.cy}) scale(${fa}) rotate(${(1 - fa) * -60})`);
+  flowerB.f.setAttribute("transform", `translate(${flowerB.cx},${flowerB.cy}) scale(${fb}) rotate(${(1 - fb) * 60})`);
+  const rs = popScale(t, 6.3);
+  rays.setAttribute("opacity", Math.min(1, rs));
+
+  bubbles.forEach(b => { const sc = popScale(t, b.t); b.n.setAttribute("opacity", sc > 0 ? 1 : 0); setTr(b.n, b.ox, b.oy, sc, sc); });
+}
+
+// ---------- line boil + playback ----------
+const turb = document.getElementById("turb");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let playing = !reduce, t0 = performance.now(), tCur = reduce ? 7.9 : 0, lastSeed = -1;
+const playBtn = document.getElementById("play"), scrub = document.getElementById("scrub"), timeEl = document.getElementById("time");
+const segBtns = [...document.querySelectorAll("#tl button")];
+function ui() {
+  timeEl.textContent = tCur.toFixed(2) + "s";
+  scrub.value = tCur;
+  playBtn.textContent = playing ? "一時停止" : "再生";
+  segBtns.forEach((b, i) => { const a = +b.dataset.t, e = i < 3 ? +segBtns[i + 1].dataset.t : 10; b.classList.toggle("on", tCur >= a && tCur < e); });
+}
+function boil(n) { if (n !== lastSeed) { turb.setAttribute("seed", [1, 7, 13][n % 3]); lastSeed = n; } }
+function frame(now) {
+  if (playing) tCur = ((now - t0) / 1000) % 10;
+  render(tCur);
+  boil(reduce ? 0 : Math.floor(now / 125));
+  ui();
+  requestAnimationFrame(frame);
+}
+function seek(t) { tCur = t; t0 = performance.now() - t * 1000; }
+playBtn.onclick = () => { playing = !playing; if (playing) seek(tCur); };
+scrub.oninput = () => { seek(+scrub.value); };
+segBtns.forEach(b => b.onclick = () => seek(+b.dataset.t));
+document.querySelectorAll("[data-copy]").forEach(btn => btn.onclick = () => {
+  const src = document.getElementById(btn.dataset.copy).textContent;
+  const done = () => { btn.textContent = "コピーしました"; setTimeout(() => btn.textContent = "コピー", 1600); };
+  try {
+    navigator.clipboard.writeText(src).then(done, () => { const r = document.createRange(); r.selectNodeContents(document.getElementById(btn.dataset.copy)); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); btn.textContent = "選択しました"; });
+  } catch (e) {}
+});
+
+// for offline rendering (frame export)
+window.renderAt = (t, n) => { playing = false; tCur = t; render(t); boil(n); };
+if (location.hash === "#record") document.body.classList.add("record");
+render(tCur); ui();
+requestAnimationFrame(frame);
+})();
+</script>
